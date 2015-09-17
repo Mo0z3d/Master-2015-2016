@@ -1,0 +1,112 @@
+#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <Dwenguino.h>
+
+
+const int SENSORS = 2;                  //The ammount of sensors
+const int trigPins[SENSORS] = {31,29};
+const int echoPins[SENSORS] = {30,28};    
+unsigned long defaultValues[SENSORS];             //default data values when no one is walking through the door
+unsigned long values[SENSORS];                   //raw data values
+unsigned int firstSensor;               //The first sensor that detects a change, can be used to determine the direction
+//unsigned long startTime;                //updated with millis() when a sensor detects something.
+//unsigned long passedTime;               //time between detection first and second sensor
+
+void setup() {
+  initDwenguino();
+  Serial.begin (9600);
+//  Serial1.begin(9600);
+  
+  for(int i=0; i<SENSORS; i++)
+    pinMode(trigPins[i],OUTPUT);        //Set all the trigger pins as outputs
+
+  for(int j=0; j<SENSORS;j++)
+    pinMode(echoPins[j],INPUT);         //Set all the echo pins as inputs
+  delay(500);
+  setDefaultValues();              //Set the default values, doorway must be clear at startup!
+}
+
+void loop() {
+  updateValues();
+  if(personPassing()){
+    printToSerial();
+    printToDisplay();
+//    printToBluetooth();
+  }
+  delay(30);
+
+
+ 
+}
+
+void printToDisplay(){                //Maximum 2 sensors!
+  dwenguinoLCD.setCursor(13,0);  
+  dwenguinoLCD.print("S:");
+  dwenguinoLCD.print(firstSensor);
+  for(int x=0;x<SENSORS;x++){
+    dwenguinoLCD.setCursor(0,x);
+    dwenguinoLCD.print(x);
+    dwenguinoLCD.print(": ");
+    dwenguinoLCD.print(values[x]);
+    dwenguinoLCD.setCursor(8,x);
+    dwenguinoLCD.print(defaultValues[x]);
+  }
+}
+
+void printToBluetooth(){
+   Serial1.println("First sensor: " + firstSensor);
+  for(int n=0;n<SENSORS;n++){
+    Serial1.print("Sensor " + n);
+    Serial1.println(": " + values[n]);
+
+  }
+}
+
+void printToSerial(){                    //prints the last two values to the serial monitor
+  Serial.println("First sensor: " + firstSensor);
+  for(int n=0;n<SENSORS;n++){
+    Serial.print("Sensor " + n);
+    Serial.println(": " + values[n]);
+
+  }
+  
+}
+
+boolean personPassing(){                //Returns true when a person is passing through the door, updates firstSensor and startTime
+  for(int m=0;m<SENSORS;m++){
+    if(values[m] > (defaultValues[m]+500) || values[m] < (defaultValues[m]-500)){
+      firstSensor = m;
+//      startTime = millis();
+      return true;
+    }
+  }
+  return false;
+}
+
+
+void setDefaultValues(){                 //Sets the default values (raw values when no one is passing through the door)
+  for(int k=0; k<SENSORS;k++){
+    digitalWrite(trigPins[k], LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPins[k], HIGH);
+    delayMicroseconds(5); 
+    digitalWrite(trigPins[k], LOW);
+    defaultValues[k] = pulseIn(echoPins[k], HIGH);
+    delayMicroseconds(6);
+  }
+
+  
+}
+
+void updateValues(){                      //updates the raw values
+  for(int l=0; l<SENSORS;l++){      
+    digitalWrite(trigPins[l], LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPins[l], HIGH);
+    delayMicroseconds(5); 
+    digitalWrite(trigPins[l], LOW);
+    values[l] = pulseIn(echoPins[l], HIGH);
+    delayMicroseconds(6);
+  }
+}
+
