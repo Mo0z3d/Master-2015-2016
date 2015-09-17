@@ -1,0 +1,99 @@
+#include <NewPing.h>
+#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <Dwenguino.h>
+
+
+
+
+const int SENSORS=2;
+const int MAX_DISTANCE=300;
+NewPing Sensors[SENSORS] = { 
+  NewPing(31, 30, MAX_DISTANCE),
+  NewPing(29, 28, MAX_DISTANCE)
+};
+
+int firstSensor;
+int values[SENSORS];
+int defaultValues[SENSORS];
+
+void setup() {
+  initDwenguino();
+  Serial.begin (9600);
+  Serial.write('1');              //Used to sync with Python
+ 
+  delay(500);
+  setDefaultValues();              //Set the default values, doorway must be clear at startup!
+}
+
+void loop() {
+  updateValues();
+  if(personPassing()){
+    printToSerial();
+    printToDisplay();
+//    printToBluetooth();
+  }
+
+
+}
+
+void printToDisplay(){                //Maximum 2 sensors!
+  dwenguinoLCD.setCursor(13,0);  
+  dwenguinoLCD.print("S:");
+  dwenguinoLCD.print(firstSensor);
+  for(int x=0;x<SENSORS;x++){
+    dwenguinoLCD.setCursor(0,x);
+    dwenguinoLCD.print(x);
+    dwenguinoLCD.print(": ");
+    if(values[x]<1000)
+      dwenguinoLCD.print(" ");
+    if(values[x]<100)
+      dwenguinoLCD.print(" ");
+    if(values[x]<10)
+      dwenguinoLCD.print(" ");
+    
+    
+    dwenguinoLCD.print(values[x]);
+    dwenguinoLCD.setCursor(8,x);
+    dwenguinoLCD.print(defaultValues[x]);
+  }
+
+
+}
+
+
+
+void printToBluetooth(){
+
+}
+
+void printToSerial(){                    //prints the last two values to the serial monitor
+
+  
+}
+
+boolean personPassing(){                //Returns true when a person is passing through the door, updates firstSensor and startTime
+  for(int m=0; m<SENSORS;m++){
+    if(values[m] > (defaultValues[m]+1) || values[m] < (defaultValues[m]-1)){
+      return true;
+      firstSensor = m;
+    }
+  }
+  return false;
+}
+
+void setDefaultValues(){                 //Sets the default values (raw values when no one is passing through the door)
+  for(int k=0; k<SENSORS;k++){
+    defaultValues[k] = Sensors[k].ping_cm();
+    delay(33);
+  }
+  
+}
+
+void updateValues(){                      //updates the raw values
+  for(int l=0; l<SENSORS;l++){
+    values[l] = Sensors[l].ping_cm();
+    delay(33);
+  }
+}
+
